@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebVault — Galerie de Structures</title>
+  <meta name="description" content="Galerie de structures de sites web scrapées, organisées par catégorie.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="main.css">
+</head>
+<body>
+
+<!-- ── Scrim mobile ─────────────────────────────────────────── -->
+<div id="sidebar-scrim" aria-hidden="true"></div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     CARD TEMPLATE  —  Cloned per site in JS, never rendered
+════════════════════════════════════════════════════════════ -->
+<template id="card-tpl">
+  <article class="card" role="listitem">
+    <!--
+      .card-link is the ONE interactive element for the whole card.
+      It's position:absolute inset:0 (stretched link pattern).
+      aria-label is set in JS.
+    -->
+    <a class="card-link" href="#" aria-haspopup="dialog"></a>
+
+    <div class="card-thumb">
+      <div class="card-thumb-bg">
+        <div class="card-thumb-icon" aria-hidden="true"></div><!-- initials -->
+      </div>
+      <div class="card-overlay" aria-hidden="true">
+        <div class="preview-label">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+          Voir la structure
+        </div>
+      </div>
+    </div>
+
+    <div class="card-body">
+      <div class="card-meta">
+        <span class="card-category"></span>
+      </div>
+      <h2 class="card-title"></h2>
+      <p  class="card-path"></p>
+    </div>
+
+    <div class="card-footer">
+      <button type="button" class="btn-copy">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <rect x="9" y="9" width="13" height="13" rx="2"/>
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+        </svg>
+        Copier le code
+      </button>
+    </div>
+  </article>
+</template>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SIDEBAR
+════════════════════════════════════════════════════════════ -->
+<aside id="sidebar" aria-label="Navigation principale">
+
+  <div class="logo" role="banner">
+    <div class="logo-mark" aria-hidden="true">
+      <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <rect x="1" y="1" width="6" height="6" rx="1" fill="#000"/>
+        <rect x="9" y="1" width="6" height="6" rx="1" fill="#000"/>
+        <rect x="1" y="9" width="6" height="6" rx="1" fill="#000"/>
+        <rect x="9" y="9" width="6" height="2" rx="1" fill="#000"/>
+        <rect x="9" y="13" width="6" height="2" rx="1" fill="#000"/>
+      </svg>
+    </div>
+    <div>
+      <div class="logo-text">WebVault</div>
+      <span class="logo-version">Structure Gallery v3.0</span>
+    </div>
+  </div>
+
+  <div class="nav-section">
+    <p class="nav-label" id="nav-heading">Catégories</p>
+    <nav aria-labelledby="nav-heading">
+      <div id="nav-menu" role="list"><!-- injected --></div>
+    </nav>
+  </div>
+
+  <footer class="sidebar-footer">
+    <span aria-hidden="true">DATA_BANK/<span class="accent-text">█████</span></span><br>
+    <span id="footer-count" aria-live="polite">0</span><span aria-hidden="true"> structures indexées</span>
+  </footer>
+</aside>
+
+<!-- ═══════════════════════════════════════════════════════════
+     TOPBAR
+════════════════════════════════════════════════════════════ -->
+<header id="topbar">
+  <button type="button" id="btn-burger"
+          aria-label="Ouvrir le menu de navigation"
+          aria-expanded="false"
+          aria-controls="sidebar">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <line x1="3" y1="6"  x2="21" y2="6"/>
+      <line x1="3" y1="12" x2="21" y2="12"/>
+      <line x1="3" y1="18" x2="21" y2="18"/>
+    </svg>
+  </button>
+
+  <p class="topbar-title" aria-hidden="true">
+    <strong id="current-category-label">Toutes</strong> les structures
+  </p>
+
+  <div class="search-wrapper" role="search">
+    <label for="search-input" class="sr-only">Rechercher un site dans la galerie</label>
+    <input id="search-input" type="search"
+           placeholder="Rechercher un site…"
+           autocomplete="off" spellcheck="false"
+           aria-label="Rechercher un site dans la galerie"
+           aria-controls="cards-grid">
+    <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+    </svg>
+  </div>
+
+  <div class="topbar-stats">
+    <em id="visible-count" aria-live="polite" aria-atomic="true">0</em>
+    <span aria-hidden="true"> résultats</span>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════════════════════════════════
+     MAIN
+════════════════════════════════════════════════════════════ -->
+<main id="main" aria-label="Galerie de structures">
+  <div class="section-header">
+    <h1 class="section-title" id="section-title">Toutes les structures</h1>
+    <span class="section-pill" id="section-pill" aria-hidden="true">Gallery</span>
+  </div>
+
+  <div id="cards-grid" role="list"
+       aria-label="Structures de sites web"
+       aria-live="polite" aria-relevant="additions removals">
+
+    <div id="empty-state" role="status">
+      <div class="empty-icon" aria-hidden="true">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+      </div>
+      <p class="empty-title">Aucun résultat</p>
+      <p class="empty-sub">Aucune structure ne correspond à votre recherche. Essayez un autre terme ou choisissez une autre catégorie.</p>
+    </div>
+
+  </div>
+</main>
+
+<!-- ═══════════════════════════════════════════════════════════
+     NATIVE <dialog> MODAL
+════════════════════════════════════════════════════════════ -->
+<dialog id="modal" aria-labelledby="modal-dialog-title">
+
+  <span id="modal-dialog-title" class="sr-only">Aperçu de structure</span>
+
+  <div class="modal-bar">
+    <div class="modal-dots" aria-hidden="true">
+      <div class="modal-dot r"></div>
+      <div class="modal-dot y"></div>
+      <div class="modal-dot g"></div>
+    </div>
+
+    <div class="modal-title-bar" aria-hidden="true">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+        <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+      </svg>
+      <span id="modal-url">–</span>
+    </div>
+
+    <div class="modal-actions">
+      <a id="btn-open-tab" href="#" target="_blank"
+         rel="noopener noreferrer"
+         class="modal-btn"
+         aria-label="Ouvrir dans un nouvel onglet">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+          <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+        </svg>
+        <span>Nouvel onglet</span>
+      </a>
+
+      <button type="button" id="btn-close" class="modal-btn" aria-label="Fermer l'aperçu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6"  y1="6" x2="18" y2="18"/>
+        </svg>
+        <span>Fermer</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="modal-content-area">
+
+    <div class="modal-loading" id="modal-loading"
+         aria-live="polite" aria-label="Chargement en cours">
+      <div class="spinner" aria-hidden="true"></div>
+      <p class="loading-text">Chargement de la structure…</p>
+    </div>
+
+    <div class="modal-error" id="modal-error" role="alert">
+      <div class="modal-error-icon" aria-hidden="true">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8"  x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+      </div>
+      <p class="modal-error-title">Aperçu bloqué</p>
+      <p class="modal-error-sub">Ce site refuse l'affichage en iframe (X-Frame-Options / CSP). Ouvrez-le directement dans un onglet.</p>
+      <a id="error-open-tab" href="#" target="_blank" rel="noopener noreferrer"
+         class="btn-open-tab" aria-label="Ouvrir le site dans un nouvel onglet">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+          <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+        </svg>
+        Ouvrir dans un nouvel onglet
+      </a>
+    </div>
+
+    <!--
+      sandbox hardening:
+        - allow-scripts      : JS dans la structure
+        - allow-forms        : formulaires
+        - allow-popups       : liens target=_blank
+        - allow-same-origin  : RETIRÉ — évite que la page chargée
+                               accède aux cookies/localStorage du parent
+      referrerpolicy=no-referrer : ne révèle pas l'URL parente
+    -->
+    <iframe
+      id="modal-iframe"
+      title="Aperçu du site sélectionné"
+      loading="lazy"
+      sandbox="allow-scripts allow-forms allow-popups"
+      referrerpolicy="no-referrer"
+    ></iframe>
+
+  </div>
+</dialog>
+
+<!-- ═══════════════════════════════════════════════════════════
+     TOAST
+════════════════════════════════════════════════════════════ -->
+<div id="toast" role="status" aria-live="polite" aria-atomic="true">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+    <polyline points="20 6 9 17 4 12"/>
+  </svg>
+  Code copié !
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     JAVASCRIPT
+════════════════════════════════════════════════════════════ -->
+<script>
+'use strict';
+
+/* ═══════════════════════════════════════════════════════════
+   DATA — remplissez avec vos vraies structures
+   { id: string, title: string, category: string, path: string }
+════════════════════════════════════════════════════════════ */
+const DATA_BANK = [
+  { id: "accueil-airbnb",     title: "Airbnb",          category: "Accueil",  path: "DATA_BANK/Accueil/Airbnb/index.html" },
+  { id: "accueil-booking",    title: "Booking.com",     category: "Accueil",  path: "DATA_BANK/Accueil/Booking/index.html" },
+  { id: "accueil-stripe",     title: "Stripe",          category: "Accueil",  path: "DATA_BANK/Accueil/Stripe/index.html" },
+  { id: "accueil-notion",     title: "Notion",          category: "Accueil",  path: "DATA_BANK/Accueil/Notion/index.html" },
+  { id: "contact-hubspot",    title: "HubSpot Contact", category: "Contact",  path: "DATA_BANK/Contact/HubSpot/index.html" },
+  { id: "contact-salesforce", title: "Salesforce",      category: "Contact",  path: "DATA_BANK/Contact/Salesforce/index.html" },
+  { id: "apropos-linear",     title: "Linear",          category: "À propos", path: "DATA_BANK/Apropos/Linear/index.html" },
+  { id: "apropos-vercel",     title: "Vercel",          category: "À propos", path: "DATA_BANK/Apropos/Vercel/index.html" },
+  { id: "apropos-github",     title: "GitHub",          category: "À propos", path: "DATA_BANK/Apropos/GitHub/index.html" },
+  { id: "blog-medium",        title: "Medium",          category: "Blog",     path: "DATA_BANK/Blog/Medium/index.html" },
+  { id: "blog-substack",      title: "Substack",        category: "Blog",     path: "DATA_BANK/Blog/Substack/index.html" },
+  { id: "pricing-figma",      title: "Figma Pricing",   category: "Tarifs",   path: "DATA_BANK/Tarifs/Figma/index.html" },
+  { id: "pricing-loom",       title: "Loom Pricing",    category: "Tarifs",   path: "DATA_BANK/Tarifs/Loom/index.html" },
+];
+
+const CATEGORY_COLORS = {
+  "Accueil":  "#e8ff47",
+  "Contact":  "#47c4ff",
+  "À propos": "#ff8c47",
+  "Blog":     "#c447ff",
+  "Tarifs":   "#47ffb5",
+};
+const COLOR_DEFAULT = "#e8ff47";
+
+/* ═══════════════════════════════════════════════════════════
+   STATE — single source of truth, synced with URL
+════════════════════════════════════════════════════════════ */
+let state = { cat: "Toutes", q: "" };
+
+/* ═══════════════════════════════════════════════════════════
+   UTILS
+════════════════════════════════════════════════════════════ */
+const $  = id => document.getElementById(id);
+const gc = cat => CATEGORY_COLORS[cat] || COLOR_DEFAULT;
+
+const getInitials = t =>
+  t.split(/\s+/).map(w => w[0]).join("").slice(0, 3).toUpperCase();
+
+const escHtml = s =>
+  s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+
+const getCategories   = () => ["Toutes", ...new Set(DATA_BANK.map(s => s.category))];
+const countCat        = cat => cat === "Toutes"
+  ? DATA_BANK.length
+  : DATA_BANK.filter(s => s.category === cat).length;
+
+/* ─── Debounce ───────────────────────────────────────────── */
+function debounce(fn, ms) {
+  let id;
+  return (...args) => { clearTimeout(id); id = setTimeout(() => fn(...args), ms); };
+}
+
+/* ═══════════════════════════════════════════════════════════
+   DEEP LINKING — URL ↔ state
+════════════════════════════════════════════════════════════ */
+function readURL() {
+  const p = new URLSearchParams(location.search);
+  state.cat = p.get("cat") || "Toutes";
+  state.q   = p.get("q")   || "";
+}
+
+function pushURL() {
+  const p = new URLSearchParams();
+  if (state.cat !== "Toutes") p.set("cat", state.cat);
+  if (state.q)                p.set("q",   state.q);
+  const qs = p.toString();
+  history.pushState(null, "", qs ? `?${qs}` : location.pathname);
+}
+
+// Browser back/forward
+window.addEventListener("popstate", () => { readURL(); syncUI(); renderCards(); });
+
+/* ═══════════════════════════════════════════════════════════
+   SIDEBAR DRAWER (mobile)
+════════════════════════════════════════════════════════════ */
+const sidebar   = $("sidebar");
+const scrim     = $("sidebar-scrim");
+const btnBurger = $("btn-burger");
+
+function openDrawer() {
+  sidebar.classList.add("drawer-open");
+  scrim.classList.add("visible");
+  scrim.removeAttribute("aria-hidden");
+  btnBurger.setAttribute("aria-expanded", "true");
+  btnBurger.setAttribute("aria-label", "Fermer le menu de navigation");
+  setTimeout(() => sidebar.querySelector(".nav-item")?.focus(), 40);
+}
+function closeDrawer() {
+  sidebar.classList.remove("drawer-open");
+  scrim.classList.remove("visible");
+  scrim.setAttribute("aria-hidden", "true");
+  btnBurger.setAttribute("aria-expanded", "false");
+  btnBurger.setAttribute("aria-label", "Ouvrir le menu de navigation");
+  btnBurger.focus();
+}
+btnBurger.addEventListener("click", () =>
+  sidebar.classList.contains("drawer-open") ? closeDrawer() : openDrawer()
+);
+scrim.addEventListener("click", closeDrawer);
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && sidebar.classList.contains("drawer-open") && !modal.open)
+    closeDrawer();
+});
+
+/* ═══════════════════════════════════════════════════════════
+   BUILD NAV
+════════════════════════════════════════════════════════════ */
+function buildNav() {
+  const nav = $("nav-menu");
+  nav.innerHTML = "";
+  getCategories().forEach(cat => {
+    const isActive = cat === state.cat;
+    const color    = gc(cat);
+    const count    = countCat(cat);
+
+    const btn = document.createElement("button");
+    btn.type      = "button";
+    btn.className = "nav-item" + (isActive ? " active" : "");
+    btn.setAttribute("role", "listitem");
+    btn.setAttribute("aria-current", String(isActive));
+    btn.setAttribute("aria-label", `${cat} — ${count} structure${count > 1 ? "s" : ""}`);
+
+    const dot = document.createElement("span");
+    dot.className = "nav-dot";
+    dot.setAttribute("aria-hidden", "true");
+    if (cat !== "Toutes") { dot.style.background = color; dot.style.opacity = "0.5"; }
+
+    const badge = document.createElement("span");
+    badge.className = "nav-count";
+    badge.textContent = count;
+    badge.setAttribute("aria-hidden", "true");
+
+    btn.appendChild(dot);
+    btn.appendChild(document.createTextNode(cat));
+    btn.appendChild(badge);
+
+    btn.addEventListener("click", () => {
+      state.cat = cat;
+      pushURL();
+      syncUI();
+      renderCards();
+      if (window.innerWidth <= 900) closeDrawer();
+    });
+    nav.appendChild(btn);
+  });
+  $("footer-count").textContent = DATA_BANK.length;
+}
+
+/* Sync visible labels (title bar, section heading) from state */
+function syncUI() {
+  const { cat, q } = state;
+  $("current-category-label").textContent = cat === "Toutes" ? "Toutes" : cat;
+  $("section-title").textContent = cat === "Toutes" ? "Toutes les structures" : `Catégorie — ${cat}`;
+  $("section-pill").textContent  = cat === "Toutes" ? "Gallery" : `${countCat(cat)} sites`;
+  $("search-input").value        = q;
+  buildNav();
+}
+
+/* ═══════════════════════════════════════════════════════════
+   RENDER CARDS  —  uses <template> clone, no innerHTML soup
+════════════════════════════════════════════════════════════ */
+const tpl  = $("card-tpl");
+const grid = $("cards-grid");
+
+function renderCards() {
+  const { cat, q } = state;
+  const qLow = q.trim().toLowerCase();
+
+  const filtered = DATA_BANK.filter(s => {
+    const catOk = cat === "Toutes" || s.category === cat;
+    const qOk   = !qLow || s.title.toLowerCase().includes(qLow) || s.category.toLowerCase().includes(qLow);
+    return catOk && qOk;
+  });
+
+  // Remove old cards, keep #empty-state
+  grid.querySelectorAll(".card").forEach(c => c.remove());
+  $("visible-count").textContent = filtered.length;
+
+  const empty = $("empty-state");
+  if (!filtered.length) { empty.classList.add("visible"); return; }
+  empty.classList.remove("visible");
+
+  // Build fragment — one DOM touch
+  const frag = document.createDocumentFragment();
+
+  filtered.forEach((site, i) => {
+    const color = gc(site.category);
+
+    // Clone the <template> content
+    const node = tpl.content.cloneNode(true);
+    const card = node.querySelector(".card");
+    card.style.animationDelay = `${i * 0.04}s`;
+
+    // Stretched link
+    const link = card.querySelector(".card-link");
+    link.setAttribute("aria-label", `Voir la structure de ${escHtml(site.title)}`);
+    link.addEventListener("click", e => { e.preventDefault(); openModal(site.path, site.title); });
+
+    // Thumb initials + gradient
+    const thumbBg = card.querySelector(".card-thumb-bg");
+    thumbBg.style.background = `radial-gradient(ellipse at 30% 40%, ${color}18 0%, transparent 60%), #111`;
+    card.querySelector(".card-thumb-icon").textContent = getInitials(site.title);
+
+    // Body
+    const catTag = card.querySelector(".card-category");
+    catTag.textContent   = site.category;
+    catTag.style.color       = color;
+    catTag.style.background  = `${color}18`;
+    catTag.style.borderColor = `${color}28`;
+
+    card.querySelector(".card-title").textContent = site.title;
+    card.querySelector(".card-path").textContent  = site.path;
+
+    // Copy button (z-index:2 sits above the stretched link)
+    const copyBtn = card.querySelector(".btn-copy");
+    copyBtn.setAttribute("aria-label", `Copier le code d'intégration de ${escHtml(site.title)}`);
+    copyBtn.addEventListener("click", e => {
+      e.stopPropagation();
+      copyCode(site.path, site.title, copyBtn);
+    });
+
+    frag.appendChild(node);
+  });
+
+  grid.insertBefore(frag, empty);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   NATIVE <dialog> MODAL
+   showModal()  → native focus trap + Escape + ::backdrop
+   close()      → native dismiss
+════════════════════════════════════════════════════════════ */
+const modal        = $("modal");
+const iframe       = $("modal-iframe");
+const modalLoading = $("modal-loading");
+const modalError   = $("modal-error");
+const btnOpenTab   = $("btn-open-tab");
+const errorOpenTab = $("error-open-tab");
+
+let loadTimer = null;
+
+function openModal(path, title) {
+  // Update URL bar and links
+  $("modal-url").textContent = path;
+  btnOpenTab.href   = path;
+  btnOpenTab.setAttribute("aria-label", `Ouvrir ${escHtml(title)} dans un nouvel onglet`);
+  errorOpenTab.href = path;
+
+  // Reset states
+  modalLoading.classList.remove("hidden");
+  modalError.classList.remove("visible");
+  iframe.removeAttribute("src");
+
+  // showModal() handles: scroll lock, focus trap, Escape key, ::backdrop
+  modal.showModal();
+  // Animate in
+  requestAnimationFrame(() => modal.classList.add("is-open"));
+
+  // Timeout fallback
+  clearTimeout(loadTimer);
+  loadTimer = setTimeout(() => {
+    if (!modalLoading.classList.contains("hidden")) showIframeError();
+  }, 10000);
+
+  iframe.onload = () => {
+    clearTimeout(loadTimer);
+    try {
+      const doc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!doc || doc.body === null) { showIframeError(); return; }
+    } catch { /* cross-origin — assume OK */ }
+    modalLoading.classList.add("hidden");
+  };
+  iframe.onerror = showIframeError;
+
+  requestAnimationFrame(() => { iframe.src = path; });
+  $("btn-close").focus();
+}
+
+function showIframeError() {
+  clearTimeout(loadTimer);
+  modalLoading.classList.add("hidden");
+  modalError.classList.add("visible");
+  $("error-open-tab").focus();
+}
+
+function closeModal() {
+  clearTimeout(loadTimer);
+  modal.classList.remove("is-open");
+  // Wait for CSS fade, then use native close()
+  setTimeout(() => {
+    modal.close();
+    iframe.removeAttribute("src");
+    modalError.classList.remove("visible");
+    modalLoading.classList.remove("hidden");
+  }, 260);
+}
+
+$("btn-close").addEventListener("click", closeModal);
+
+// "cancel" fires when Escape is pressed inside a native <dialog>
+modal.addEventListener("cancel", e => {
+  e.preventDefault(); // prevent instant close, let our animation run
+  closeModal();
+});
+
+// Backdrop click → close (click outside the dialog's content box)
+modal.addEventListener("click", e => {
+  if (e.target === modal) closeModal();
+});
+
+/* ═══════════════════════════════════════════════════════════
+   COPY CODE
+════════════════════════════════════════════════════════════ */
+function copyCode(path, title, btn) {
+  const code = [
+    `<iframe`,
+    `  src="${path}"`,
+    `  title="${escHtml(title)}"`,
+    `  width="100%" height="600"`,
+    `  loading="lazy"`,
+    `  sandbox="allow-scripts allow-forms allow-popups"`,
+    `  referrerpolicy="no-referrer"`,
+    `  frameborder="0"`,
+    `></iframe>`
+  ].join("\n");
+
+  const origHTML  = btn.innerHTML;
+  const origLabel = btn.getAttribute("aria-label");
+
+  const onDone = () => {
+    btn.classList.add("copied");
+    btn.setAttribute("aria-label", `Code copié pour ${escHtml(title)}`);
+    btn.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+        <polyline points="20 6 9 17 4 12"/>
+      </svg>
+      Copié !
+    `;
+    showToast();
+    setTimeout(() => {
+      btn.classList.remove("copied");
+      btn.innerHTML = origHTML;
+      btn.setAttribute("aria-label", origLabel);
+    }, 2200);
+  };
+
+  navigator.clipboard
+    ? navigator.clipboard.writeText(code).then(onDone).catch(() => fallbackCopy(code, onDone))
+    : fallbackCopy(code, onDone);
+}
+
+function fallbackCopy(text, cb) {
+  const ta = Object.assign(document.createElement("textarea"), {
+    value: text,
+    style: "position:fixed;top:-9999px;left:-9999px;opacity:0;"
+  });
+  document.body.appendChild(ta);
+  ta.focus(); ta.select();
+  try { document.execCommand("copy"); cb(); } catch {}
+  document.body.removeChild(ta);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   TOAST
+════════════════════════════════════════════════════════════ */
+let toastTimer;
+function showToast() {
+  const t = $("toast");
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), 2200);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SEARCH  —  250 ms debounce
+════════════════════════════════════════════════════════════ */
+const debouncedRender = debounce(() => renderCards(), 250);
+
+$("search-input").addEventListener("input", e => {
+  state.q = e.target.value;
+  pushURL();
+  debouncedRender();
+});
+
+/* ═══════════════════════════════════════════════════════════
+   INIT
+════════════════════════════════════════════════════════════ */
+readURL();   // hydrate state from URL params
+syncUI();    // reflect state in all labels / nav
+renderCards();
+</script>
+</body>
+</html>

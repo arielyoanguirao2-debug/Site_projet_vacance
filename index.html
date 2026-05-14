@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebVault — Galerie de Structures</title>
+  <meta name="description" content="Galerie de structures de sites web scrapées, organisées par catégorie.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="main.css">
+</head>
+<body>
+
+<div id="sidebar-scrim" aria-hidden="true"></div>
+
+<!-- CARD TEMPLATE -->
+<template id="card-tpl">
+  <article class="card" role="listitem">
+    <a class="card-link" href="#" aria-haspopup="dialog"></a>
+    <div class="card-thumb">
+      <div class="card-thumb-bg">
+        <div class="card-thumb-icon" aria-hidden="true"></div>
+      </div>
+      <div class="card-overlay" aria-hidden="true">
+        <div class="preview-label">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+          Voir le rendu
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="card-meta"><span class="card-category"></span></div>
+      <h2 class="card-title"></h2>
+      <p class="card-path"></p>
+    </div>
+    <div class="card-footer">
+      <button type="button" class="btn-copy">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <rect x="9" y="9" width="13" height="13" rx="2"/>
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+        </svg>
+        Copier le code
+      </button>
+    </div>
+  </article>
+</template>
+
+<!-- SIDEBAR -->
+<aside id="sidebar" aria-label="Navigation principale">
+  <div class="logo" role="banner">
+    <div class="logo-mark" aria-hidden="true">
+      <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <rect x="1" y="1" width="6" height="6" rx="1" fill="#000"/>
+        <rect x="9" y="1" width="6" height="6" rx="1" fill="#000"/>
+        <rect x="1" y="9" width="6" height="6" rx="1" fill="#000"/>
+        <rect x="9" y="9" width="6" height="2" rx="1" fill="#000"/>
+        <rect x="9" y="13" width="6" height="2" rx="1" fill="#000"/>
+      </svg>
+    </div>
+    <div>
+      <div class="logo-text">WebVault</div>
+      <span class="logo-version">Structure Gallery v3.1</span>
+    </div>
+  </div>
+  <div class="nav-section">
+    <p class="nav-label" id="nav-heading">Catégories</p>
+    <nav aria-labelledby="nav-heading">
+      <div id="nav-menu" role="list"></div>
+    </nav>
+  </div>
+  <footer class="sidebar-footer">
+    <span aria-hidden="true">DATA_BANK/<span class="accent-text">█████</span></span><br>
+    <span id="footer-count" aria-live="polite">0</span><span aria-hidden="true"> structures indexées</span>
+  </footer>
+</aside>
+
+<!-- TOPBAR -->
+<header id="topbar">
+  <button type="button" id="btn-burger"
+          aria-label="Ouvrir le menu de navigation"
+          aria-expanded="false"
+          aria-controls="sidebar">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <line x1="3" y1="6"  x2="21" y2="6"/>
+      <line x1="3" y1="12" x2="21" y2="12"/>
+      <line x1="3" y1="18" x2="21" y2="18"/>
+    </svg>
+  </button>
+  <p class="topbar-title" aria-hidden="true">
+    <strong id="current-category-label">Toutes</strong> les structures
+  </p>
+  <div class="search-wrapper" role="search">
+    <label for="search-input" class="sr-only">Rechercher un site dans la galerie</label>
+    <input id="search-input" type="search"
+           placeholder="Rechercher un site…"
+           autocomplete="off" spellcheck="false"
+           aria-label="Rechercher un site dans la galerie"
+           aria-controls="cards-grid">
+    <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+    </svg>
+  </div>
+  <div class="topbar-stats">
+    <em id="visible-count" aria-live="polite" aria-atomic="true">0</em>
+    <span aria-hidden="true"> résultats</span>
+  </div>
+</header>
+
+<!-- MAIN -->
+<main id="main" aria-label="Galerie de structures">
+  <div class="section-header">
+    <h1 class="section-title" id="section-title">Toutes les structures</h1>
+    <span class="section-pill" id="section-pill" aria-hidden="true">Gallery</span>
+  </div>
+  <div id="cards-grid" role="list"
+       aria-label="Structures de sites web"
+       aria-live="polite" aria-relevant="additions removals">
+
+    <div id="loading-state" role="status" aria-live="polite">
+      <div class="loading-spinner" aria-hidden="true"></div>
+      <p class="loading-text">Chargement des structures…</p>
+    </div>
+
+    <div id="api-error-state" style="display:none;">
+      <div class="empty-icon" aria-hidden="true">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+      </div>
+      <p class="empty-title">Impossible de joindre le serveur</p>
+      <p class="empty-sub" id="api-error-msg">Vérifiez votre connexion ou réessayez.</p>
+      <button type="button" id="btn-retry">↺ Réessayer</button>
+    </div>
+
+    <div id="empty-state" role="status">
+      <div class="empty-icon" aria-hidden="true">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+      </div>
+      <p class="empty-title">Aucun résultat</p>
+      <p class="empty-sub">Aucune structure ne correspond à votre recherche.</p>
+    </div>
+  </div>
+</main>
+
+<!-- ═══════════════════════════════════════════
+     MODAL — interpréteur HTML/CSS/JS live
+════════════════════════════════════════════ -->
+<dialog id="modal" aria-labelledby="modal-dialog-title">
+  <span id="modal-dialog-title" class="sr-only">Aperçu de structure</span>
+
+  <div class="modal-bar">
+    <div class="modal-dots" aria-hidden="true">
+      <div class="modal-dot r"></div>
+      <div class="modal-dot y"></div>
+      <div class="modal-dot g"></div>
+    </div>
+
+    <div class="modal-title-bar" aria-hidden="true">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="16 18 22 12 16 6"/>
+        <polyline points="8 6 2 12 8 18"/>
+      </svg>
+      <span id="modal-url">–</span>
+    </div>
+
+    <div class="modal-actions">
+      <!-- Toggle Rendu ↔ Source -->
+      <div class="view-toggle" role="group" aria-label="Mode d'affichage">
+        <button type="button" id="btn-view-render" class="toggle-btn active" aria-pressed="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+          <span>Rendu</span>
+        </button>
+        <button type="button" id="btn-view-source" class="toggle-btn" aria-pressed="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="16 18 22 12 16 6"/>
+            <polyline points="8 6 2 12 8 18"/>
+          </svg>
+          <span>Source</span>
+        </button>
+      </div>
+
+      <!-- Copier depuis la modale -->
+      <button type="button" id="btn-modal-copy" class="modal-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="9" y="9" width="13" height="13" rx="2"/>
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+        </svg>
+        <span>Copier</span>
+      </button>
+
+      <button type="button" id="btn-close" class="modal-btn" aria-label="Fermer l'aperçu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6"  y1="6" x2="18" y2="18"/>
+        </svg>
+        <span>Fermer</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="modal-content-area">
+    <!-- Vue RENDU : iframe sandbox exécute le HTML/CSS/JS -->
+    <iframe
+      id="modal-iframe-render"
+      title="Rendu HTML live de la structure"
+      sandbox="allow-scripts allow-forms allow-modals"
+      referrerpolicy="no-referrer"
+    ></iframe>
+
+    <!-- Vue SOURCE : affichage du code brut -->
+    <div id="modal-source-view" class="hidden">
+      <pre id="modal-source-code"></pre>
+    </div>
+  </div>
+</dialog>
+
+<!-- TOAST -->
+<div id="toast" role="status" aria-live="polite" aria-atomic="true">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+    <polyline points="20 6 9 17 4 12"/>
+  </svg>
+  Code copié !
+</div>
+
+<style>
+  .sr-only {
+    position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+    overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;
+  }
+
+  /* ── Loading ───────────────────────────────────── */
+  #loading-state {
+    display:flex;flex-direction:column;align-items:center;
+    justify-content:center;padding:4rem 2rem;gap:1rem;
+    color:var(--text-secondary);width:100%;grid-column:1/-1;
+  }
+  #loading-state.hidden { display:none; }
+  .loading-spinner {
+    width:2rem;height:2rem;border:2px solid var(--border);
+    border-top-color:var(--accent);border-radius:50%;
+    animation:spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  /* ── API Error ─────────────────────────────────── */
+  #api-error-state {
+    flex-direction:column;align-items:center;justify-content:center;
+    padding:4rem 2rem;gap:0.5rem;text-align:center;
+    width:100%;grid-column:1/-1;
+  }
+  #btn-retry {
+    margin-top:1rem;padding:0.5rem 1.25rem;
+    background:var(--accent);color:#000;border:none;
+    border-radius:var(--radius-sm);font-family:'DM Mono',monospace;
+    font-size:0.75rem;letter-spacing:0.06em;text-transform:uppercase;
+    cursor:pointer;font-weight:600;
+  }
+  #btn-retry:hover { opacity:0.85; }
+
+  /* ── View Toggle ───────────────────────────────── */
+  .view-toggle {
+    display:flex;background:var(--bg-void);
+    border:1px solid var(--border);border-radius:var(--radius-sm);
+    padding:2px;gap:2px;
+  }
+  .toggle-btn {
+    background:transparent;border:none;color:var(--text-secondary);
+    padding:0.25rem 0.625rem;border-radius:calc(var(--radius-sm) - 2px);
+    font-family:'DM Mono',monospace;font-size:0.625rem;
+    letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;
+    display:flex;align-items:center;gap:0.3rem;
+    transition:background var(--t),color var(--t);white-space:nowrap;
+  }
+  .toggle-btn svg { width:0.75rem;height:0.75rem; }
+  .toggle-btn:hover { color:var(--text-primary); }
+  .toggle-btn.active { background:var(--accent-dim);color:var(--accent); }
+
+  /* ── Modal content ─────────────────────────────── */
+  #modal-iframe-render {
+    position:absolute;inset:0;width:100%;height:100%;
+    border:none;background:#fff;
+    transition:opacity 0.15s;
+  }
+  #modal-iframe-render.hidden { opacity:0;pointer-events:none; }
+
+  #modal-source-view {
+    position:absolute;inset:0;width:100%;height:100%;
+    background:#0d1117;overflow:auto;
+    transition:opacity 0.15s;
+  }
+  #modal-source-view.hidden { opacity:0;pointer-events:none; }
+
+  #modal-source-code {
+    margin:0;padding:1.5rem;
+    font-family:'DM Mono',monospace;font-size:0.72rem;
+    line-height:1.75;color:#e6edf3;
+    white-space:pre;tab-size:2;
+  }
+</style>
+
+<script>
+'use strict';
+
+/* ══════════════════════════════════════════════
+   CONFIG
+══════════════════════════════════════════════ */
+const API_BASE = 'https://stuffone-backend.onrender.com';
+const API_ROUTES = [
+  '/api/structures','/api/sites','/structures','/sites',
+  '/api/pages','/pages','/api/items','/items',
+];
+
+/* ══════════════════════════════════════════════
+   COULEURS
+══════════════════════════════════════════════ */
+const CATEGORY_COLORS = {
+  "Accueil":"#e8ff47","Contact":"#47c4ff","À propos":"#ff8c47",
+  "Blog":"#c447ff","Tarifs":"#47ffb5",
+};
+const AUTO_PALETTE = [
+  "#e8ff47","#47c4ff","#ff8c47","#c447ff","#47ffb5",
+  "#ff4776","#47ffd0","#ffb347","#7b47ff","#ff47c4",
+];
+let autoPaletteIdx = 0;
+const dynColors = {};
+function gc(cat) {
+  if (CATEGORY_COLORS[cat]) return CATEGORY_COLORS[cat];
+  if (!dynColors[cat]) dynColors[cat] = AUTO_PALETTE[autoPaletteIdx++ % AUTO_PALETTE.length];
+  return dynColors[cat];
+}
+
+/* ══════════════════════════════════════════════
+   STATE
+══════════════════════════════════════════════ */
+let DATA_BANK = [];
+let state = { cat:"Toutes", q:"" };
+
+/* ══════════════════════════════════════════════
+   UTILS
+══════════════════════════════════════════════ */
+const $ = id => document.getElementById(id);
+const getInitials = t => t.split(/\s+/).map(w=>w[0]).join("").slice(0,3).toUpperCase();
+const escHtml = s => s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+const getCategories = () => ["Toutes",...new Set(DATA_BANK.map(s=>s.category))];
+const countCat = cat => cat==="Toutes" ? DATA_BANK.length : DATA_BANK.filter(s=>s.category===cat).length;
+function debounce(fn,ms){ let id; return (...a)=>{ clearTimeout(id); id=setTimeout(()=>fn(...a),ms); }; }
+
+/* ══════════════════════════════════════════════
+   NORMALISATION
+   Champs backend reconnus :
+     source_code / html / code  → le HTML brut à exécuter
+     title / name / label
+     category / type / section
+     path / url / link / src
+══════════════════════════════════════════════ */
+function normalizeItem(item) {
+  return {
+    id:          item.id          || item._id                        || String(Math.random()),
+    title:       item.title       || item.name      || item.label    || "Sans titre",
+    category:    item.category    || item.type      || item.section  || "Autre",
+    path:        item.path        || item.url       || item.link     || item.src || "#",
+    source_code: item.source_code || item.html      || item.code     || null,
+  };
+}
+
+function normalizeResponse(data) {
+  if (Array.isArray(data)) return data.map(normalizeItem);
+  const keys = ['data','structures','sites','pages','items','results','records'];
+  for (const k of keys) if (data[k] && Array.isArray(data[k])) return data[k].map(normalizeItem);
+  if (data.id || data._id || data.title) return [normalizeItem(data)];
+  return [];
+}
+
+/* ══════════════════════════════════════════════
+   FETCH BACKEND
+══════════════════════════════════════════════ */
+async function fetchFromBackend() {
+  const errors = [];
+  for (const route of API_ROUTES) {
+    try {
+      const res = await fetch(`${API_BASE}${route}`, {
+        headers:{'Accept':'application/json'},
+        signal: AbortSignal.timeout(10000),
+      });
+      if (!res.ok) { errors.push(`${route} → HTTP ${res.status}`); continue; }
+      const ct = res.headers.get('content-type') || '';
+      if (!ct.includes('application/json')) { errors.push(`${route} → non-JSON`); continue; }
+      const raw  = await res.json();
+      const items = normalizeResponse(raw);
+      if (!items.length) { errors.push(`${route} → vide`); continue; }
+      console.info(`[WebVault] ✓ ${API_BASE}${route} — ${items.length} structures`);
+      return items;
+    } catch(err) { errors.push(`${route} → ${err.message}`); }
+  }
+  throw new Error(`Aucune route API ne répond.\n${errors.map(e=>'  • '+e).join('\n')}`);
+}
+
+/* ══════════════════════════════════════════════
+   INIT
+══════════════════════════════════════════════ */
+async function loadData() {
+  $('loading-state').classList.remove('hidden');
+  $('api-error-state').style.display = 'none';
+  $('empty-state').classList.remove('visible');
+  try {
+    DATA_BANK = await fetchFromBackend();
+    $('loading-state').classList.add('hidden');
+    readURL(); syncUI(); renderCards();
+  } catch(err) {
+    console.error('[WebVault]', err);
+    $('loading-state').classList.add('hidden');
+    $('api-error-state').style.display = 'flex';
+    $('api-error-msg').textContent = err.message;
+  }
+}
+$('btn-retry').addEventListener('click', loadData);
+
+/* ══════════════════════════════════════════════
+   DEEP LINKING
+   FIX RECHERCHE : on utilise replaceState (pas pushState)
+   → aucun événement popstate n'est déclenché
+   → la page ne se "recharge" pas quand on tape
+══════════════════════════════════════════════ */
+function readURL() {
+  const p = new URLSearchParams(location.search);
+  state.cat = p.get("cat") || "Toutes";
+  state.q   = p.get("q")   || "";
+}
+function pushURL() {
+  const p = new URLSearchParams();
+  if (state.cat !== "Toutes") p.set("cat", state.cat);
+  if (state.q)                p.set("q",   state.q);
+  const qs = p.toString();
+  history.replaceState(null, "", qs ? `?${qs}` : location.pathname);
+}
+
+/* ══════════════════════════════════════════════
+   SIDEBAR DRAWER
+══════════════════════════════════════════════ */
+const sidebar   = $("sidebar");
+const scrim     = $("sidebar-scrim");
+const btnBurger = $("btn-burger");
+
+function openDrawer() {
+  sidebar.classList.add("drawer-open");
+  scrim.classList.add("visible");
+  scrim.removeAttribute("aria-hidden");
+  btnBurger.setAttribute("aria-expanded","true");
+  btnBurger.setAttribute("aria-label","Fermer le menu de navigation");
+  setTimeout(()=>sidebar.querySelector(".nav-item")?.focus(),40);
+}
+function closeDrawer() {
+  sidebar.classList.remove("drawer-open");
+  scrim.classList.remove("visible");
+  scrim.setAttribute("aria-hidden","true");
+  btnBurger.setAttribute("aria-expanded","false");
+  btnBurger.setAttribute("aria-label","Ouvrir le menu de navigation");
+  btnBurger.focus();
+}
+btnBurger.addEventListener("click",()=>sidebar.classList.contains("drawer-open")?closeDrawer():openDrawer());
+scrim.addEventListener("click",closeDrawer);
+document.addEventListener("keydown",e=>{
+  if(e.key==="Escape"&&sidebar.classList.contains("drawer-open")&&!modal.open) closeDrawer();
+});
+
+/* ══════════════════════════════════════════════
+   NAV
+══════════════════════════════════════════════ */
+function buildNav() {
+  const nav = $("nav-menu");
+  nav.innerHTML = "";
+  getCategories().forEach(cat => {
+    const isActive = cat===state.cat;
+    const color = gc(cat);
+    const count = countCat(cat);
+    const btn = document.createElement("button");
+    btn.type="button";
+    btn.className="nav-item"+(isActive?" active":"");
+    btn.setAttribute("role","listitem");
+    btn.setAttribute("aria-current",String(isActive));
+    btn.setAttribute("aria-label",`${cat} — ${count} structure${count>1?"s":""}`);
+    const dot = document.createElement("span");
+    dot.className="nav-dot"; dot.setAttribute("aria-hidden","true");
+    if(cat!=="Toutes"){ dot.style.background=color; dot.style.opacity="0.5"; }
+    const badge = document.createElement("span");
+    badge.className="nav-count"; badge.textContent=count; badge.setAttribute("aria-hidden","true");
+    btn.appendChild(dot);
+    btn.appendChild(document.createTextNode(cat));
+    btn.appendChild(badge);
+    btn.addEventListener("click",()=>{
+      state.cat=cat; pushURL(); syncUI(); renderCards();
+      if(window.innerWidth<=900) closeDrawer();
+    });
+    nav.appendChild(btn);
+  });
+  $("footer-count").textContent = DATA_BANK.length;
+}
+
+function syncUI() {
+  const {cat,q} = state;
+  $("current-category-label").textContent = cat==="Toutes"?"Toutes":cat;
+  $("section-title").textContent = cat==="Toutes"?"Toutes les structures":`Catégorie — ${cat}`;
+  $("section-pill").textContent  = cat==="Toutes"?"Gallery":`${countCat(cat)} sites`;
+  $("search-input").value        = q;
+  buildNav();
+}
+
+/* ══════════════════════════════════════════════
+   CARDS
+══════════════════════════════════════════════ */
+const tpl  = $("card-tpl");
+const grid = $("cards-grid");
+
+function renderCards() {
+  const {cat,q} = state;
+  const qLow = q.trim().toLowerCase();
+  const filtered = DATA_BANK.filter(s => {
+    const catOk = cat==="Toutes"||s.category===cat;
+    const qOk   = !qLow||s.title.toLowerCase().includes(qLow)||s.category.toLowerCase().includes(qLow);
+    return catOk&&qOk;
+  });
+  grid.querySelectorAll(".card").forEach(c=>c.remove());
+  $("visible-count").textContent = filtered.length;
+  const empty = $("empty-state");
+  if(!filtered.length){ empty.classList.add("visible"); return; }
+  empty.classList.remove("visible");
+
+  const frag = document.createDocumentFragment();
+  filtered.forEach((site,i) => {
+    const color = gc(site.category);
+    const node  = tpl.content.cloneNode(true);
+    const card  = node.querySelector(".card");
+    card.style.animationDelay = `${i*0.04}s`;
+
+    // Clic card → ouvre l'interpréteur HTML
+    const link = card.querySelector(".card-link");
+    link.setAttribute("aria-label",`Voir le rendu de ${escHtml(site.title)}`);
+    link.addEventListener("click",e=>{ e.preventDefault(); openModal(site); });
+
+    const thumbBg = card.querySelector(".card-thumb-bg");
+    thumbBg.style.background=`radial-gradient(ellipse at 30% 40%, ${color}18 0%, transparent 60%), #111`;
+    card.querySelector(".card-thumb-icon").textContent = getInitials(site.title);
+
+    const catTag = card.querySelector(".card-category");
+    catTag.textContent=site.category; catTag.style.color=color;
+    catTag.style.background=`${color}18`; catTag.style.borderColor=`${color}28`;
+
+    card.querySelector(".card-title").textContent = site.title;
+    card.querySelector(".card-path").textContent  = site.source_code ? "(code source intégré)" : (site.path||"");
+
+    // Bouton copier → copie le source_code HTML de la card
+    const copyBtn = card.querySelector(".btn-copy");
+    copyBtn.setAttribute("aria-label",`Copier le code source de ${escHtml(site.title)}`);
+    copyBtn.addEventListener("click",e=>{ e.stopPropagation(); copySourceCode(site, copyBtn); });
+
+    frag.appendChild(node);
+  });
+  grid.insertBefore(frag,empty);
+}
+
+/* ══════════════════════════════════════════════
+   MODAL — interpréteur HTML/CSS/JS
+   Si la card a un source_code → on l'injecte dans
+   srcdoc : le navigateur exécute HTML + CSS + JS
+   directement, comme un vrai interpréteur.
+   Si pas de source_code → on charge via src (URL).
+══════════════════════════════════════════════ */
+const modal         = $("modal");
+const iframeRender  = $("modal-iframe-render");
+const sourceView    = $("modal-source-view");
+const sourceCodeEl  = $("modal-source-code");
+const btnViewRender = $("btn-view-render");
+const btnViewSource = $("btn-view-source");
+const btnModalCopy  = $("btn-modal-copy");
+
+let currentSite = null;
+
+function setView(view) {
+  const isRender = view==="render";
+  btnViewRender.classList.toggle("active", isRender);
+  btnViewSource.classList.toggle("active", !isRender);
+  btnViewRender.setAttribute("aria-pressed", String(isRender));
+  btnViewSource.setAttribute("aria-pressed", String(!isRender));
+  iframeRender.classList.toggle("hidden", !isRender);
+  sourceView.classList.toggle("hidden",  isRender);
+}
+
+btnViewRender.addEventListener("click",()=>setView("render"));
+btnViewSource.addEventListener("click",()=>setView("source"));
+
+function openModal(site) {
+  currentSite = site;
+  $("modal-url").textContent = site.title;
+
+  if (site.source_code) {
+    // Injection directe → interpréteur HTML/CSS/JS live
+    iframeRender.srcdoc = site.source_code;
+    sourceCodeEl.textContent = site.source_code;
+  } else {
+    // Pas de code → charge l'URL externe
+    iframeRender.removeAttribute("srcdoc");
+    iframeRender.src = site.path;
+    sourceCodeEl.textContent = `/* Pas de source_code dans cette card.\n   URL chargée : ${site.path} */`;
+  }
+
+  setView("render");
+  modal.showModal();
+  requestAnimationFrame(()=>modal.classList.add("is-open"));
+  $("btn-close").focus();
+}
+
+// Copier depuis la modale
+btnModalCopy.addEventListener("click",()=>{ if(currentSite) copySourceCode(currentSite, btnModalCopy); });
+
+function closeModal() {
+  modal.classList.remove("is-open");
+  setTimeout(()=>{
+    modal.close();
+    iframeRender.srcdoc="";
+    iframeRender.removeAttribute("src");
+    sourceCodeEl.textContent="";
+    currentSite=null;
+  },260);
+}
+$("btn-close").addEventListener("click",closeModal);
+modal.addEventListener("cancel",e=>{ e.preventDefault(); closeModal(); });
+modal.addEventListener("click",e=>{ if(e.target===modal) closeModal(); });
+
+/* ══════════════════════════════════════════════
+   COPY SOURCE CODE
+   Copie le source_code HTML de la card.
+   Fallback iframe snippet si pas de source_code.
+══════════════════════════════════════════════ */
+function copySourceCode(site, btn) {
+  const text = site.source_code || [
+    `<iframe`,
+    `  src="${site.path}"`,
+    `  title="${escHtml(site.title)}"`,
+    `  width="100%" height="600"`,
+    `  loading="lazy"`,
+    `  sandbox="allow-scripts allow-forms allow-popups"`,
+    `  referrerpolicy="no-referrer"`,
+    `  frameborder="0"`,
+    `></iframe>`
+  ].join("\n");
+
+  const origHTML  = btn.innerHTML;
+  const origLabel = btn.getAttribute("aria-label")||"";
+  const onDone = () => {
+    btn.classList.add("copied");
+    btn.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Copié !`;
+    showToast();
+    setTimeout(()=>{ btn.classList.remove("copied"); btn.innerHTML=origHTML; btn.setAttribute("aria-label",origLabel); },2200);
+  };
+  navigator.clipboard
+    ? navigator.clipboard.writeText(text).then(onDone).catch(()=>fallbackCopy(text,onDone))
+    : fallbackCopy(text,onDone);
+}
+
+function fallbackCopy(text,cb){
+  const ta=Object.assign(document.createElement("textarea"),{
+    value:text,style:"position:fixed;top:-9999px;left:-9999px;opacity:0;"
+  });
+  document.body.appendChild(ta); ta.focus(); ta.select();
+  try{ document.execCommand("copy"); cb(); }catch{}
+  document.body.removeChild(ta);
+}
+
+/* ══════════════════════════════════════════════
+   TOAST
+══════════════════════════════════════════════ */
+let toastTimer;
+function showToast(){
+  const t=$("toast"); t.classList.add("show");
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),2200);
+}
+
+/* ══════════════════════════════════════════════
+   SEARCH  — FIX : replaceState silencieux,
+   aucun rechargement quand on tape
+══════════════════════════════════════════════ */
+const debouncedSearch = debounce(()=>{ pushURL(); renderCards(); }, 250);
+$("search-input").addEventListener("input", e=>{
+  state.q = e.target.value;
+  debouncedSearch();
+});
+
+/* ══════════════════════════════════════════════
+   DÉMARRAGE
+══════════════════════════════════════════════ */
+loadData();
+</script>
+</body>
+</html>

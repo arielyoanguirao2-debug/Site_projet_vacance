@@ -649,20 +649,86 @@ onclick="toggleSidebar()"
 
 <script>
 
+/* =========================================
+   API
+========================================= */
+
 const API_URL =
 "https://stuffone-backend-production.up.railway.app";
+
+/* =========================================
+   LOAD STRUCTURES
+========================================= */
 
 async function loadStructures(){
 
   try{
 
     const response =
-    await fetch(API_URL + "/structures");
+    await fetch(
+      API_URL + "/structures"
+    );
 
     const data =
     await response.json();
 
     console.log(data);
+
+    const grid =
+    document.querySelector(".grid");
+
+    grid.innerHTML = "";
+
+    data.forEach(structure => {
+
+      grid.innerHTML += `
+
+      <article class="card">
+
+        <!-- TOP CLICKABLE -->
+
+        <div
+        class="card-image clickable-preview"
+        onclick="openPreview('${structure.id}')"
+        >
+
+          <span>
+            ${structure.title.charAt(0)}
+          </span>
+
+        </div>
+
+        <!-- BODY -->
+
+        <div class="card-body">
+
+          <div class="card-tag">
+            ${structure.category}
+          </div>
+
+          <h2 class="card-title">
+            ${structure.title}
+          </h2>
+
+          <p class="card-text">
+            Structure uploadée
+            sur StuffOne.
+          </p>
+
+          <button
+          class="copy-btn"
+          onclick="copyCode('${structure.id}')"
+          >
+            Copier le code
+          </button>
+
+        </div>
+
+      </article>
+
+      `;
+
+    });
 
   }catch(error){
 
@@ -675,11 +741,71 @@ async function loadStructures(){
 
 }
 
-loadStructures();
+/* =========================================
+   OPEN PREVIEW
+========================================= */
 
-/* =====================================
+function openPreview(id){
+
+  window.location.href =
+  "preview.html?id=" + id;
+
+}
+
+/* =========================================
+   COPY CODE
+========================================= */
+
+async function copyCode(id){
+
+  try{
+
+    const response =
+    await fetch(
+
+      API_URL +
+      "/structures/" +
+      id +
+      "/code"
+
+    );
+
+    const data =
+    await response.json();
+
+    const fullCode =
+
+      data.html +
+
+      "\n<style>\n" +
+
+      data.css +
+
+      "\n</style>\n" +
+
+      "\n<script>\n" +
+
+      data.js +
+
+      "\n</script>";
+
+    navigator.clipboard.writeText(
+      fullCode
+    );
+
+    alert("Code copié");
+
+  }catch(error){
+
+    console.log(error);
+
+  }
+
+}
+
+/* =========================================
    SIDEBAR
-===================================== */
+========================================= */
 
 function toggleSidebar(){
 
@@ -694,6 +820,12 @@ function toggleSidebar(){
   overlay.classList.toggle("active");
 
 }
+
+/* =========================================
+   START
+========================================= */
+
+loadStructures();
 
 </script>
 
